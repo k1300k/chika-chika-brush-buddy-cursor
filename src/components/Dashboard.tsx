@@ -30,6 +30,19 @@ const Dashboard = ({ mode, onStartBrushing, onSwitchMode }: DashboardProps) => {
   };
 
   const completedCount = todaySessions.filter(s => s.completed).length;
+  const sessionOrder: Array<{ label: string; time: "morning" | "afternoon" | "evening" }> = [
+    { label: "아침", time: "morning" },
+    { label: "점심", time: "afternoon" },
+    { label: "저녁", time: "evening" },
+  ];
+
+  const sessionStatuses = sessionOrder.map((entry) => {
+    const session = todaySessions.find((s) => s.time === entry.time);
+    return {
+      ...entry,
+      completed: Boolean(session?.completed),
+    };
+  });
   const primaryButtonClass: Record<Mode, string> = {
     kids: "bg-accent text-accent-foreground hover:opacity-90 transition-opacity",
     learning: "bg-secondary text-secondary-foreground hover:opacity-90 transition-opacity",
@@ -151,22 +164,51 @@ const Dashboard = ({ mode, onStartBrushing, onSwitchMode }: DashboardProps) => {
           </Card>
           
           <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">오늘의 양치</p>
-                <p className="mt-2 text-3xl font-bold">{completedCount}<span className="text-lg text-muted-foreground">/3</span></p>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">오늘의 양치</p>
+                  <p className="mt-2 text-3xl font-bold">
+                    {completedCount}
+                    <span className="text-lg text-muted-foreground">/3</span>
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {sessionStatuses.map(({ time, completed }) => (
+                    <div
+                      key={time}
+                      className={cn(
+                        "h-3 w-3 rounded-full transition-colors",
+                        completed ? "bg-success" : "bg-muted"
+                      )}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-2">
-                {["morning", "afternoon", "evening"].map((time) => (
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {sessionStatuses.map(({ label, time, completed }) => (
                   <div
                     key={time}
                     className={cn(
-                      "h-3 w-3 rounded-full transition-colors",
-                      hasCompletedSession(time as "morning" | "afternoon" | "evening")
-                        ? "bg-success"
-                        : "bg-muted"
+                      "rounded-xl border px-4 py-3 text-center transition-colors",
+                      completed
+                        ? "border-success/30 bg-success/10 text-foreground"
+                        : "border-muted bg-muted text-muted-foreground"
                     )}
-                  />
+                  >
+                    <p className="text-sm font-medium">{label}</p>
+                    <span
+                      className={cn(
+                        "mt-1 inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-semibold",
+                        completed
+                          ? "bg-success text-white"
+                          : "bg-muted-foreground/10 text-muted-foreground"
+                      )}
+                    >
+                      {completed ? "완료" : "미완료"}
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
