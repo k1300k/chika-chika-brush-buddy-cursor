@@ -20,11 +20,12 @@ const ProgramInfoButton = () => {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          size="icon"
+          size="sm"
           aria-label="프로그램 설명"
-          className="shrink-0"
+          className="shrink-0 flex-col gap-1 py-2"
         >
           <Info className="h-4 w-4" />
+          <span className="text-xs font-medium">프로그램 설명</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
@@ -32,7 +33,7 @@ const ProgramInfoButton = () => {
           <DialogTitle>프로그램 개발 이력</DialogTitle>
           <DialogDescription>
             바이브코딩 프롬프트 기반 진화 과정과 사용자 요청을 한눈에 확인해
-            보세요.
+            보세요. 모든 프롬프트 요청은 Cursor 크레딧을 차감합니다.
           </DialogDescription>
         </DialogHeader>
 
