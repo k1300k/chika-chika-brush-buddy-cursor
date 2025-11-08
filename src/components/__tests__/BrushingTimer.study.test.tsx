@@ -24,8 +24,8 @@ describe("BrushingTimer - 학습 모드", () => {
       screen.getByText(/명언 영어/i),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTitle(/양치 영상/i),
-    ).not.toBeInTheDocument();
+      screen.getByText(/학습 영상 & 배경 음악/i),
+    ).toBeInTheDocument();
   });
 });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -26,45 +26,107 @@ const POINTS_PER_SESSION = 10;
 const buildYouTubeEmbedUrl = (id: string) =>
   `https://www.youtube.com/embed/${id}`;
 
-const kidsVideos = [
-  { id: "wxwsJZYnqWc", title: "뽀로로 치카치카 양치 노래" },
-  { id: "WNmCm4oyrkY", title: "핑크퐁 치카치카 양치 송" },
-  { id: "xhiPZ8T_rDo", title: "타요와 함께하는 양치시간" },
-  { id: "Vgcb4vZJ1Vc", title: "아기상어 양치 노래" },
-  { id: "tq-XDxaKXGA", title: "꼬마버스 타요 양치송" },
-  { id: "IcS4y9MzQ_8", title: "핑크퐁 양치 시간 챈트" },
-  { id: "43Nm-h9OLaY", title: "슈퍼윙스 신나는 양치송" },
-  { id: "YQLh0szu3Bs", title: "코코몽 깨끗한 양치송" },
+type VideoSource =
+  | {
+      type: "youtube";
+      id: string;
+      title: string;
+      description?: string;
+      attribution?: string;
+    }
+  | {
+      type: "mp4";
+      src: string;
+      title: string;
+      description?: string;
+      attribution?: string;
+      poster?: string;
+    };
+
+const kidsVideos: VideoSource[] = [
+  {
+    type: "mp4",
+    src: "https://cdn.coverr.co/videos/coverr-brushing-teeth-people-with-each-other-5299/1080p.mp4",
+    title: "함께 이를 닦는 어린이",
+    description: "아이와 보호자가 함께 이를 닦는 생활 습관 영상",
+    attribution: "Coverr · CC0",
+  },
+  {
+    type: "mp4",
+    src: "https://cdn.coverr.co/videos/coverr-little-girl-brushing-her-teeth-6721/1080p.mp4",
+    title: "거울 앞에서 양치하는 아이",
+    description: "거울을 보며 양치하는 아이의 4K 영상",
+    attribution: "Coverr · CC0",
+  },
+  {
+    type: "mp4",
+    src: "https://assets.mixkit.co/videos/preview/mixkit-kid-brushing-his-teeth-in-the-morning-28290-large.mp4",
+    title: "아침 양치 루틴",
+    description: "밝은 아침 분위기의 양치 장면",
+    attribution: "Mixkit · Free License",
+  },
 ];
 
-// 저작권 없는 무료 음악 - YouTube Audio Library
-const studyMusic = [
+const learningVideos: VideoSource[] = [
   {
-    youtubeId: "jfKfPfyJRdk",
-    title: "lofi hip hop radio",
-    description: "집중할 수 있는 부드러운 배경 음악",
-    source: "Lofi Girl",
+    type: "mp4",
+    src: "https://cdn.coverr.co/videos/coverr-young-woman-studying-while-listening-to-music-5670/1080p.mp4",
+    title: "집중 공부 타임",
+    description: "잔잔한 음악과 함께 공부하는 학습 분위기 영상",
+    attribution: "Coverr · CC0",
   },
   {
-    youtubeId: "5qap5aO4i9A",
-    title: "Relaxing Jazz Piano",
-    description: "잔잔한 재즈 피아노",
-    source: "Cafe Music BGM",
+    type: "mp4",
+    src: "https://assets.mixkit.co/videos/preview/mixkit-students-studying-together-1150-large.mp4",
+    title: "함께 공부하는 친구들",
+    description: "학습에 집중하는 학생들의 장면",
+    attribution: "Mixkit · Free License",
   },
   {
-    youtubeId: "lTRiuFIWV54",
-    title: "Study Music",
-    description: "학습을 위한 배경 음악",
-    source: "Study Music Project",
+    type: "youtube",
+    id: "5qap5aO4i9A",
+    title: "Lofi Girl 집중 음악",
+    description: "저작권 없는 학습용 배경 음악 스트림",
+    attribution: "YouTube · Lofi Girl",
   },
 ];
 
-const normalVideos = [
-  { id: "bk7McNUjWgw", title: "3분 뉴스 요약" },
-  { id: "ZSt9tm3RoUU", title: "TED-Ed 3분 과학" },
-  { id: "HEYbgyL5n1g", title: "3분 자연 다큐" },
-  { id: "1ZYbU82GVz4", title: "건강한 생활 습관" },
-  { id: "sTJ7AzBIJoI", title: "3분 시사 요약" },
+const normalVideos: VideoSource[] = [
+  {
+    type: "youtube",
+    id: "bk7McNUjWgw",
+    title: "3분 건강 뉴스",
+    description: "하루 3분 건강 정보를 전달하는 클립",
+    attribution: "YouTube",
+  },
+  {
+    type: "youtube",
+    id: "ZSt9tm3RoUU",
+    title: "TED-Ed 3분 과학",
+    description: "짧은 과학 지식을 전달하는 TED-Ed 영상",
+    attribution: "YouTube",
+  },
+  {
+    type: "youtube",
+    id: "HEYbgyL5n1g",
+    title: "3분 자연 다큐",
+    description: "편안한 자연 풍경을 담은 짧은 다큐",
+    attribution: "YouTube",
+  },
+  {
+    type: "youtube",
+    id: "1ZYbU82GVz4",
+    title: "건강한 생활 습관",
+    description: "건강 루틴을 소개하는 인포 클립",
+    attribution: "YouTube",
+  },
+  {
+    type: "youtube",
+    id: "sTJ7AzBIJoI",
+    title: "3분 시사 요약",
+    description: "바쁜 일정을 위한 짧은 시사 요약",
+    attribution: "YouTube",
+  },
 ];
 
 const kidsContent = [
@@ -140,15 +202,18 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
   const [contentIndex, setContentIndex] = useState(0);
   const { toast } = useToast();
   const isLearningMode = normalizedMode === "learning";
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
 
   // Select random video on component mount
   const videoSource = useMemo(() => {
-    if (isLearningMode) {
-      return null;
-    }
-    const list = normalizedMode === "kids" ? kidsVideos : normalVideos;
+    const list =
+      normalizedMode === "kids"
+        ? kidsVideos
+        : normalizedMode === "learning"
+        ? learningVideos
+        : normalVideos;
     return list[Math.floor(Math.random() * list.length)];
-  }, [isLearningMode, normalizedMode]);
+  }, [normalizedMode]);
 
   const content = useMemo(() => {
     if (normalizedMode === "kids") return kidsContent;
@@ -164,11 +229,6 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
     const sentence =
       learningSentences[Math.floor(Math.random() * learningSentences.length)];
     return { quote, sentence };
-  }, [isLearningMode]);
-
-  const selectedStudyMusic = useMemo(() => {
-    if (!isLearningMode) return null;
-    return studyMusic[Math.floor(Math.random() * studyMusic.length)];
   }, [isLearningMode]);
 
   const progress = ((TOTAL_SECONDS - seconds) / TOTAL_SECONDS) * 100;
@@ -232,10 +292,18 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
 
   const handleStart = () => {
     setIsRunning(true);
+    if (videoSource?.type === "mp4" && videoElementRef.current) {
+      videoElementRef.current.play().catch(() => {
+        /* autoplay block ignored */
+      });
+    }
   };
 
   const handlePause = () => {
     setIsRunning(false);
+    if (videoSource?.type === "mp4" && videoElementRef.current) {
+      videoElementRef.current.pause();
+    }
   };
 
   const buttonAppearance: Record<
@@ -273,6 +341,71 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
     sentence: "bg-secondary/10 border-secondary/20",
   };
   const timerTitle = isLearningMode ? "학습 타이머" : "양치 타이머";
+
+  const renderVideoPlayer = () => {
+    if (!videoSource) {
+      return (
+        <Card
+          className={cn(
+            "p-4 text-center",
+            contentCardClass[normalizedMode],
+          )}
+        >
+          <p className="text-sm text-muted-foreground">
+            잠시 후 다시 시도해 주세요. 영상을 불러오지 못했습니다.
+          </p>
+        </Card>
+      );
+    }
+
+    if (videoSource.type === "youtube") {
+      return (
+        <div className="relative aspect-video w-full overflow-hidden rounded-lg">
+          <iframe
+            key={videoSource.id}
+            src={`${buildYouTubeEmbedUrl(videoSource.id)}?autoplay=${isRunning ? 1 : 0}&mute=0&controls=1&rel=0&modestbranding=1&playsinline=1`}
+            title={videoSource.title}
+            aria-label={normalizedMode === "kids" ? "아이들을 위한 양치 영상" : "양치/학습 영상"}
+            className="h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+        <video
+          key={videoSource.src}
+          ref={videoElementRef}
+          controls
+          playsInline
+          preload="metadata"
+          poster={videoSource.poster}
+          className="h-full w-full object-cover"
+          aria-label={videoSource.title}
+        >
+          <source src={videoSource.src} type="video/mp4" />
+          브라우저가 비디오 태그를 지원하지 않습니다.
+        </video>
+      </div>
+    );
+  };
+
+  const renderVideoMeta = () => {
+    if (!videoSource) return null;
+    return (
+      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+        <span className="text-sm font-medium text-foreground">
+          {videoSource.title}
+        </span>
+        {videoSource.description && <span>{videoSource.description}</span>}
+        {videoSource.attribution && <span>출처: {videoSource.attribution}</span>}
+      </div>
+    );
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
@@ -318,63 +451,22 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
               </Card>
               <Card className="md:col-span-2 border border-[#bae6fd] bg-[#e0f2fe] p-4">
                 <h3 className="text-sm font-semibold text-[#1d4ed8]">
-                  잔잔한 경음악
+                  학습 영상 & 배경 음악
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {selectedStudyMusic?.description}
+                  저작권 걱정 없이 사용할 수 있는 학습용 영상을 자동으로 불러옵니다.
                 </p>
-                <div className="mt-3 flex flex-col gap-3">
-                  {selectedStudyMusic && (
-                    <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-[#c7d2fe] bg-[#fff]">
-                      <iframe
-                        key={selectedStudyMusic.youtubeId}
-                        src={`${buildYouTubeEmbedUrl(selectedStudyMusic.youtubeId)}?autoplay=${isRunning ? 1 : 0}&mute=0&controls=1&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${selectedStudyMusic.youtubeId}`}
-                        title={selectedStudyMusic.title}
-                        aria-label="학습에 집중할 수 있는 잔잔한 배경 음악"
-                        className="h-full w-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        referrerPolicy="strict-origin-when-cross-origin"
-                        allowFullScreen
-                      />
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-[#0f172a]">
-                        {selectedStudyMusic?.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        저작권 없는 무료 음악 ({selectedStudyMusic?.source})으로 제공됩니다.
-                      </p>
-                    </div>
-                  </div>
+                <div className="mt-3 space-y-3">
+                  {renderVideoPlayer()}
+                  {renderVideoMeta()}
                 </div>
               </Card>
             </div>
-          ) : videoSource ? (
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-              <iframe
-                key={videoSource.id}
-                src={`${buildYouTubeEmbedUrl(videoSource.id)}?autoplay=${isRunning ? 1 : 0}&mute=0&controls=1&rel=0&modestbranding=1`}
-                title="양치 영상"
-                aria-label={normalizedMode === "kids" ? "아이들을 위한 양치 영상" : "양치 시간 정보"}
-                className="h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-              />
-            </div>
           ) : (
-            <Card
-              className={cn(
-                "p-4 text-center",
-                contentCardClass[normalizedMode],
-              )}
-            >
-              <p className="text-sm text-muted-foreground">
-                잠시 후 다시 시도해 주세요. 영상을 불러오지 못했습니다.
-              </p>
-            </Card>
+            <div className="space-y-3">
+              {renderVideoPlayer()}
+              {renderVideoMeta()}
+            </div>
           )}
 
           {/* Timer Display */}
