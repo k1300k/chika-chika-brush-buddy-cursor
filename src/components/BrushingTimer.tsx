@@ -91,6 +91,37 @@ const learningVideos: VideoSource[] = [
   },
 ];
 
+const PlaceholderContent = ({ mode, title }: { mode: Mode; title: string }) => {
+  const animations: Record<Mode, string> = {
+    kids: "animate-bounce",
+    learning: "animate-pulse",
+    normal: "animate-pulse",
+  };
+
+  const icons: Record<Mode, string> = {
+    kids: "🦷✨🪥",
+    learning: "📚💡✍️",
+    normal: "🌟💪⏰",
+  };
+
+  const messages: Record<Mode, string> = {
+    kids: "치카치카! 깨끗한 이를 만들어요",
+    learning: "집중해서 학습하는 시간입니다",
+    normal: "건강한 습관을 만들어가요",
+  };
+
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+      <div className="p-8 text-center">
+        <div className={`mb-6 text-6xl ${animations[mode]}`}>{icons[mode]}</div>
+        <h3 className="mb-3 text-xl font-semibold text-gray-800">{title}</h3>
+        <p className="mb-4 text-sm text-gray-600">{messages[mode]}</p>
+        <div className="mx-auto h-1 w-32 rounded-full bg-gradient-to-r from-blue-400 to-green-400" />
+      </div>
+    </div>
+  );
+};
+
 const normalVideos: VideoSource[] = [
   {
     type: "youtube",
@@ -200,6 +231,8 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
   const [seconds, setSeconds] = useState(TOTAL_SECONDS);
   const [isRunning, setIsRunning] = useState(false);
   const [contentIndex, setContentIndex] = useState(0);
+  const [videoError, setVideoError] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
   const { toast } = useToast();
   const isLearningMode = normalizedMode === "learning";
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
@@ -214,6 +247,11 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
         : normalVideos;
     return list[Math.floor(Math.random() * list.length)];
   }, [normalizedMode]);
+
+  useEffect(() => {
+    setVideoError(false);
+    setVideoLoading(true);
+  }, [videoSource]);
 
   const content = useMemo(() => {
     if (normalizedMode === "kids") return kidsContent;
@@ -291,11 +329,23 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
   };
 
   const handleStart = () => {
+    console.log("타이머 시작, 현재 비디오 소스:", videoSource);
     setIsRunning(true);
     if (videoSource?.type === "mp4" && videoElementRef.current) {
-      videoElementRef.current.play().catch(() => {
-        /* autoplay block ignored */
+      const video = videoElementRef.current;
+      video.muted = true;
+      console.log("비디오 요소 상태:", {
+        readyState: video.readyState,
+        networkState: video.networkState,
+        currentSrc: video.currentSrc,
       });
+
+      video
+        .play()
+        .then(() => console.log("비디오 재생 성공"))
+        .catch((error) => {
+          console.warn("자동재생이 차단되었습니다:", error);
+        });
     }
   };
 
@@ -343,18 +393,12 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
   const timerTitle = isLearningMode ? "학습 타이머" : "양치 타이머";
 
   const renderVideoPlayer = () => {
-    if (!videoSource) {
+    if (videoError || !videoSource) {
       return (
-        <Card
-          className={cn(
-            "p-4 text-center",
-            contentCardClass[normalizedMode],
-          )}
-        >
-          <p className="text-sm text-muted-foreground">
-            잠시 후 다시 시도해 주세요. 영상을 불러오지 못했습니다.
-          </p>
-        </Card>
+        <PlaceholderContent
+          mode={normalizedMode}
+          title={videoSource?.title ?? "양치 가이드"}
+        />
       );
     }
 
@@ -363,14 +407,25 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
         <div className="relative aspect-video w-full overflow-hidden rounded-lg">
           <iframe
             key={videoSource.id}
-            src={`${buildYouTubeEmbedUrl(videoSource.id)}?autoplay=${isRunning ? 1 : 0}&mute=0&controls=1&rel=0&modestbranding=1&playsinline=1`}
+            src={`${buildYouTubeEmbedUrl(videoSource.id)}?autoplay=${isRunning ? 1 : 0}&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1`}
             title={videoSource.title}
             aria-label={normalizedMode === "kids" ? "아이들을 위한 양치 영상" : "양치/학습 영상"}
             className="h-full w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
+            onLoad={() => setVideoLoading(false)}
+            onError={() => {
+              console.warn("YouTube iframe 로딩 실패");
+              setVideoLoading(false);
+              setVideoError(true);
+            }}
           />
+          {videoLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+            </div>
+          )}
         </div>
       );
     }
@@ -383,19 +438,31 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
           controls
           playsInline
           preload="metadata"
+          muted
           poster={videoSource.poster}
           className="h-full w-full object-cover"
           aria-label={videoSource.title}
+          onLoadStart={() => setVideoLoading(true)}
+          onCanPlay={() => setVideoLoading(false)}
+          onError={() => {
+            console.warn("비디오 로딩 실패:", videoSource.src);
+            setVideoLoading(false);
+            setVideoError(true);
+          }}
         >
           <source src={videoSource.src} type="video/mp4" />
-          브라우저가 비디오 태그를 지원하지 않습니다.
         </video>
+        {videoLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-white" />
+          </div>
+        )}
       </div>
     );
   };
 
   const renderVideoMeta = () => {
-    if (!videoSource) return null;
+    if (!videoSource || videoError) return null;
     return (
       <div className="flex flex-col gap-1 text-xs text-muted-foreground">
         <span className="text-sm font-medium text-foreground">
