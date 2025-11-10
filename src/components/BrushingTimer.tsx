@@ -25,6 +25,22 @@ interface BrushingTimerProps {
 const TOTAL_SECONDS = 180; // 3 minutes
 const POINTS_PER_SESSION = 10;
 
+// Background music for each mode (royalty-free sources from Pixabay)
+// All music is licensed under Pixabay Content License (free for commercial use, no attribution required)
+const BACKGROUND_MUSIC = {
+  kids: [
+    "https://cdn.pixabay.com/audio/2022/03/10/audio_4a456a6ff4.mp3", // Happy Kids Music
+    "https://cdn.pixabay.com/audio/2022/08/02/audio_95c2c2240d.mp3", // Playful Children
+    "https://cdn.pixabay.com/audio/2023/03/24/audio_9e4b861ae0.mp3", // Fun Kids Song
+  ],
+  learning: [
+    "https://cdn.pixabay.com/audio/2022/03/24/audio_c3bc5d30dd.mp3", // Lofi Study Beat
+    "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", // Calm Focus Music
+    "https://cdn.pixabay.com/audio/2022/08/23/audio_80c38374fe.mp3", // Peaceful Study
+  ],
+  normal: [] as string[], // No background music for normal mode
+};
+
 // Kids mode: Fun tooth brushing songs and animations
 const buildYouTubeEmbedUrl = (id: string) =>
   `https://www.youtube.com/embed/${id}`;
@@ -242,6 +258,7 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [useSelfieMode, setUseSelfieMode] = useState(false);
   const [useARMode, setUseARMode] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -263,6 +280,13 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
     currentZone,
     normalizedMode === "kids" && useSelfieMode && useARMode && isRunning
   );
+
+  // Select random background music for kids and learning modes
+  const backgroundMusicUrl = useMemo(() => {
+    const musicList = BACKGROUND_MUSIC[normalizedMode];
+    if (!musicList || musicList.length === 0) return null;
+    return musicList[Math.floor(Math.random() * musicList.length)];
+  }, [normalizedMode]);
 
   // Select random video on component mount
   const videoSource = useMemo(() => {
@@ -310,6 +334,41 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
       setCurrentZone(zoneIndex);
     }
   }, [seconds, isRunning, useARMode, currentZone]);
+
+  // Background music initialization and control
+  useEffect(() => {
+    if (!backgroundMusicUrl) return;
+
+    // Create audio element
+    if (!audioRef.current) {
+      audioRef.current = new Audio(backgroundMusicUrl);
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0.3; // Set volume to 30%
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, [backgroundMusicUrl]);
+
+  // Control background music based on timer state
+  useEffect(() => {
+    if (!audioRef.current || !backgroundMusicUrl) return;
+
+    if (isRunning) {
+      // Play music when timer starts
+      audioRef.current.play().catch((error) => {
+        console.warn("배경 음악 자동 재생이 차단되었습니다:", error);
+        // Fallback: User interaction required for autoplay
+      });
+    } else {
+      // Pause music when timer stops
+      audioRef.current.pause();
+    }
+  }, [isRunning, backgroundMusicUrl]);
 
   useEffect(() => {
     if (!(normalizedMode === "kids" && useSelfieMode)) {
@@ -372,6 +431,12 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
   const progress = ((TOTAL_SECONDS - seconds) / TOTAL_SECONDS) * 100;
 
   const handleComplete = useCallback(() => {
+    // Stop background music
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
     // AR 모드 사용 시 보너스 점수 계산
     const bonusPoints = useARMode && arScore > 50 ? Math.floor(arScore / 10) : 0;
     const totalPoints = POINTS_PER_SESSION + bonusPoints;
@@ -460,6 +525,15 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
     if (videoSource?.type === "mp4" && videoElementRef.current) {
       videoElementRef.current.pause();
     }
+  };
+
+  const handleCancel = () => {
+    // Stop background music
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    onCancel();
   };
 
   const buttonAppearance: Record<
@@ -720,7 +794,7 @@ const BrushingTimer = ({ mode, onComplete, onCancel }: BrushingTimerProps) => {
               </Button>
             )}
           </div>
-          <Button variant="ghost" size="icon" onClick={onCancel}>
+          <Button variant="ghost" size="icon" onClick={handleCancel}>
             <X className="h-5 w-5" />
           </Button>
         </div>
